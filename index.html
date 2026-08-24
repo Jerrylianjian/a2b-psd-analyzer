@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>A2B TX PSD Analyzer</title>
-  <link rel="stylesheet" href="styles.css?v=20260824-100mhz-harmonics">
+  <link rel="stylesheet" href="styles.css?v=20260824-983mhz-spur">
 </head>
 <body>
   <aside class="sidebar">
@@ -68,7 +68,17 @@
 
       <label class="check-row">
         <input id="notch100Toggle" type="checkbox" checked>
-        <span>100 MHz 及倍频窄带去毛刺</span>
+        <span>98.3 MHz 及倍频窄带去毛刺</span>
+      </label>
+
+      <label class="field">
+        <span>毛刺基频 (MHz)</span>
+        <input id="spurFundamentalInput" type="number" min="1" step="0.1" value="98.3">
+      </label>
+
+      <label class="field">
+        <span>去毛刺半宽 (MHz)</span>
+        <input id="spurWidthInput" type="number" min="0.1" step="0.1" value="1.2">
       </label>
 
       <label class="check-row">
@@ -118,6 +128,6 @@
     </section>
   </main>
 
-  <script src="app.js?v=20260824-100mhz-harmonics"></script>
+  <script src="app.js?v=20260824-983mhz-spur"></script>
 </body>
 </html>

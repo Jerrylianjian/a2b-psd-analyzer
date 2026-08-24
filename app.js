@@ -18,6 +18,8 @@ const els = {
   loadSelect: document.getElementById("loadSelect"),
   driveSelect: document.getElementById("driveSelect"),
   notch100Toggle: document.getElementById("notch100Toggle"),
+  spurFundamentalInput: document.getElementById("spurFundamentalInput"),
+  spurWidthInput: document.getElementById("spurWidthInput"),
   maskToggle: document.getElementById("maskToggle"),
   runButton: document.getElementById("runButton"),
   demoButton: document.getElementById("demoButton"),
@@ -506,7 +508,9 @@ function drawPsd() {
 
 function getMeasuredPsdForDisplay(psd) {
   if (!els.notch100Toggle.checked) return psd.psdDbmRbw;
-  return despikeHarmonics(psd.freq, psd.psdDbmRbw, 100e6, 5e6, 8, 9);
+  const fundamentalHz = Math.max(1, Number(els.spurFundamentalInput.value) || 98.3) * 1e6;
+  const halfWidthHz = Math.max(0.1, Number(els.spurWidthInput.value) || 1.2) * 1e6;
+  return interpolateSpurHarmonics(psd.freq, psd.psdDbmRbw, fundamentalHz, halfWidthHz);
 }
 
 function despikeHarmonics(freq, values, fundamentalHz, halfWidthHz, thresholdDb, radiusBins) {
@@ -539,6 +543,43 @@ function despikeBand(freq, values, fMin, fMax, thresholdDb, radiusBins) {
   }
 
   return output;
+}
+
+function interpolateSpurHarmonics(freq, values, fundamentalHz, halfWidthHz) {
+  const output = Float64Array.from(values);
+  const maxFreq = freq[freq.length - 1] || 0;
+
+  for (let center = fundamentalHz; center <= maxFreq + halfWidthHz; center += fundamentalHz) {
+    interpolateBand(freq, output, center - halfWidthHz, center + halfWidthHz);
+  }
+
+  return output;
+}
+
+function interpolateBand(freq, values, fMin, fMax) {
+  let first = -1;
+  let last = -1;
+
+  for (let i = 0; i < freq.length; i += 1) {
+    if (freq[i] >= fMin && freq[i] <= fMax) {
+      if (first < 0) first = i;
+      last = i;
+    }
+  }
+
+  if (first < 0 || last < first) return;
+  const left = first - 1;
+  const right = last + 1;
+  if (left < 0 || right >= values.length) return;
+
+  const f0 = freq[left];
+  const f1 = freq[right];
+  const y0 = values[left];
+  const y1 = values[right];
+  for (let i = first; i <= last; i += 1) {
+    const t = (freq[i] - f0) / (f1 - f0 || 1);
+    values[i] = y0 + t * (y1 - y0);
+  }
 }
 
 function formatRbw(rbwHz) {
@@ -720,6 +761,15 @@ els.notch100Toggle.addEventListener("change", () => {
   const stats = complianceStats(state.psd);
   els.summary.textContent = `${stats.pass ? "PASS" : "FAIL"} · upper ${stats.worstUpperMargin.toFixed(2)} dB · lower ${Number.isFinite(stats.worstLowerMargin) ? stats.worstLowerMargin.toFixed(2) : "N/A"} dB`;
 });
+for (const el of [els.spurFundamentalInput, els.spurWidthInput]) {
+  el.addEventListener("change", () => {
+    if (!state.psd) return;
+    state.lastCsv = buildCsv(state.psd);
+    drawPsd();
+    const stats = complianceStats(state.psd);
+    els.summary.textContent = `${stats.pass ? "PASS" : "FAIL"} · upper ${stats.worstUpperMargin.toFixed(2)} dB · lower ${Number.isFinite(stats.worstLowerMargin) ? stats.worstLowerMargin.toFixed(2) : "N/A"} dB`;
+  });
+}
 window.addEventListener("resize", () => {
   drawPsd();
   drawWaveform();
