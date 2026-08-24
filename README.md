@@ -31,3 +31,15 @@ python3 -m http.server 8000
 ```
 
 然后访问 `http://localhost:8000`。
+
+## GitHub Pages
+
+发布到 GitHub Pages 时，只需要仓库根目录包含：
+
+- `index.html`
+- `app.js`
+- `styles.css`
+- `a2b_psd_limits.csv`
+- `.nojekyll`
+
+在 GitHub 仓库设置里打开 `Settings -> Pages -> Deploy from a branch`，选择 `main / root`。
