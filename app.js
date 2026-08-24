@@ -506,7 +506,16 @@ function drawPsd() {
 
 function getMeasuredPsdForDisplay(psd) {
   if (!els.notch100Toggle.checked) return psd.psdDbmRbw;
-  return despikeBand(psd.freq, psd.psdDbmRbw, 95e6, 105e6, 8, 9);
+  return despikeHarmonics(psd.freq, psd.psdDbmRbw, 100e6, 5e6, 8, 9);
+}
+
+function despikeHarmonics(freq, values, fundamentalHz, halfWidthHz, thresholdDb, radiusBins) {
+  let output = Float64Array.from(values);
+  const maxFreq = freq[freq.length - 1] || 0;
+  for (let center = fundamentalHz; center <= maxFreq + halfWidthHz; center += fundamentalHz) {
+    output = despikeBand(freq, output, center - halfWidthHz, center + halfWidthHz, thresholdDb, radiusBins);
+  }
+  return output;
 }
 
 function despikeBand(freq, values, fMin, fMax, thresholdDb, radiusBins) {
