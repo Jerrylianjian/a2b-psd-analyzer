@@ -508,9 +508,9 @@ function drawPsd() {
 
 function getMeasuredPsdForDisplay(psd) {
   if (!els.notch100Toggle.checked) return psd.psdDbmRbw;
-  const fundamentalHz = Math.max(1, Number(els.spurFundamentalInput.value) || 98.3) * 1e6;
-  const halfWidthHz = Math.max(0.1, Number(els.spurWidthInput.value) || 1.2) * 1e6;
-  return interpolateSpurHarmonics(psd.freq, psd.psdDbmRbw, fundamentalHz, halfWidthHz);
+  const startHz = Math.max(1, Number(els.spurFundamentalInput.value) || 80) * 1e6;
+  const windowPoints = Math.max(3, Math.round(Number(els.spurWidthInput.value) || 15));
+  return medianFilterAbove(psd.freq, psd.psdDbmRbw, startHz, windowPoints);
 }
 
 function despikeHarmonics(freq, values, fundamentalHz, halfWidthHz, thresholdDb, radiusBins) {
@@ -580,6 +580,71 @@ function interpolateBand(freq, values, fMin, fMax) {
     const t = (freq[i] - f0) / (f1 - f0 || 1);
     values[i] = y0 + t * (y1 - y0);
   }
+}
+
+function despikeNarrowPeaks(freq, values, startHz, thresholdDb) {
+  const output = Float64Array.from(values);
+  const n = values.length;
+  const noiseRadius = 14;
+  const guardRadius = 2;
+  const peak = new Uint8Array(n);
+
+  for (let i = noiseRadius; i < n - noiseRadius; i += 1) {
+    if (freq[i] < startHz) continue;
+    const neighborhood = [];
+    for (let j = i - noiseRadius; j <= i + noiseRadius; j += 1) {
+      if (Math.abs(j - i) <= guardRadius) continue;
+      neighborhood.push(values[j]);
+    }
+    neighborhood.sort((a, b) => a - b);
+    const med = neighborhood[Math.floor(neighborhood.length / 2)];
+    if (values[i] - med >= thresholdDb) peak[i] = 1;
+  }
+
+  for (let i = 0; i < n; i += 1) {
+    if (!peak[i]) continue;
+    let first = i;
+    let last = i;
+    while (first > 0 && peak[first - 1]) first -= 1;
+    while (last + 1 < n && peak[last + 1]) last += 1;
+
+    first = Math.max(0, first - guardRadius);
+    last = Math.min(n - 1, last + guardRadius);
+    const left = first - 1;
+    const right = last + 1;
+    if (left >= 0 && right < n) {
+      const f0 = freq[left];
+      const f1 = freq[right];
+      const y0 = output[left];
+      const y1 = output[right];
+      for (let k = first; k <= last; k += 1) {
+        const t = (freq[k] - f0) / (f1 - f0 || 1);
+        output[k] = y0 + t * (y1 - y0);
+      }
+    }
+    i = last;
+  }
+
+  return output;
+}
+
+function medianFilterAbove(freq, values, startHz, windowPoints) {
+  const output = Float64Array.from(values);
+  const k = windowPoints % 2 === 0 ? windowPoints + 1 : windowPoints;
+  const radius = Math.floor(k / 2);
+  const scratch = [];
+
+  for (let i = radius; i < values.length - radius; i += 1) {
+    if (freq[i] < startHz) continue;
+    scratch.length = 0;
+    for (let j = i - radius; j <= i + radius; j += 1) {
+      scratch.push(values[j]);
+    }
+    scratch.sort((a, b) => a - b);
+    output[i] = scratch[radius];
+  }
+
+  return output;
 }
 
 function formatRbw(rbwHz) {
