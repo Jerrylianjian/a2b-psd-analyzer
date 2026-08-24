@@ -115,7 +115,8 @@ h1 {
 
 .drop-zone small,
 .meta,
-.field span {
+.field span,
+.field small {
   color: var(--muted);
   font-size: 11px;
 }
@@ -137,6 +138,10 @@ h1 {
   display: grid;
   gap: 4px;
   margin: 10px 0;
+}
+
+.field small {
+  line-height: 1.35;
 }
 
 input[type="number"],

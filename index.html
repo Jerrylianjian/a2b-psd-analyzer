@@ -39,8 +39,9 @@
       </label>
 
       <label class="field">
-        <span>采样率 Fs (Hz, 单列 CSV 时使用)</span>
-        <input id="sampleRateInput" type="number" min="1" step="1" value="500000000">
+        <span>单列 CSV 采样率 Fs (Hz)</span>
+        <input id="sampleRateInput" type="number" min="1" step="1" value="6250000000">
+        <small id="fsHint">两列示波器 CSV 会自动从 TIME 列计算 Fs</small>
       </label>
 
       <label class="field">

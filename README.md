@@ -6,6 +6,7 @@
 
 - 两列 CSV/TXT/DAT：`time_s, voltage_v`
 - 单列 CSV：`voltage_v`，需要在界面填写采样率 `Fs`
+- 两列示波器 CSV 会自动从时间列计算 `Fs`，界面的 `Fs` 输入只作为单列 CSV 的备用值
 - 支持逗号、Tab、分号、空格分隔；表头和注释行会自动跳过
 
 ## PSD 计算
