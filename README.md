@@ -17,7 +17,7 @@
 - `windowLength = min(65536, 2^floor(log2(max(256, floor(N/8)))))`
 - 输出 `V^2/Hz`、`dB/Hz`、`dBm/Hz`、`dBm/RBW`
 - 可切换 50 Ω / 100 Ω 参考负载
-- 可设置 RBW，按 `dBm/RBW = dBm/Hz + 10log10(RBW_Hz)` 换算
+- 默认 `RBW = 2 kHz`，可手动修改；按 `dBm/RBW = dBm/Hz + 10log10(RBW_Hz)` 换算
 - 可选择高/中/低驱动能力限值，并检查上限和 5 MHz 到 80 MHz 的下限窗口
 - `a2b_psd_limits.csv` 保存了图片表格中的限值点
 

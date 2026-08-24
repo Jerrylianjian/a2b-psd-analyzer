@@ -458,7 +458,7 @@ function drawPsd() {
   clearPlot(ctx, w, h);
   if (!psd) return drawPsdPlaceholder();
 
-  els.loadLabel.textContent = `${psd.loadOhm} Ω · ${(psd.rbwHz / 1e6).toPrecision(3)} MHz RBW`;
+  els.loadLabel.textContent = `${psd.loadOhm} Ω · ${formatRbw(psd.rbwHz)} RBW`;
   const plot = { left: 64, top: 18, right: w - 22, bottom: h - 48 };
   const xMin = 0;
   const xMax = Math.min(400, Math.max(10, state.fs / 2 / 1e6));
@@ -498,6 +498,12 @@ function drawPsd() {
   ctx.stroke();
 
   drawLegend(ctx, plot);
+}
+
+function formatRbw(rbwHz) {
+  if (rbwHz >= 1e6) return `${(rbwHz / 1e6).toPrecision(3)} MHz`;
+  if (rbwHz >= 1e3) return `${(rbwHz / 1e3).toPrecision(3)} kHz`;
+  return `${rbwHz.toPrecision(3)} Hz`;
 }
 
 function drawLimitLine(ctx, points, xMap, yMap, color, dash, xMax) {
