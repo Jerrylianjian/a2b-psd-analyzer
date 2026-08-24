@@ -17,6 +17,7 @@ const els = {
   rbwInput: document.getElementById("rbwInput"),
   loadSelect: document.getElementById("loadSelect"),
   driveSelect: document.getElementById("driveSelect"),
+  notch100Toggle: document.getElementById("notch100Toggle"),
   maskToggle: document.getElementById("maskToggle"),
   runButton: document.getElementById("runButton"),
   demoButton: document.getElementById("demoButton"),
@@ -281,6 +282,7 @@ function interpolateLimit(points, mhz) {
 
 function complianceStats(psd) {
   const drive = a2bLimits[els.driveSelect.value] || a2bLimits.high;
+  const measuredPsd = getMeasuredPsdForDisplay(psd);
   let worstUpperMargin = -Infinity;
   let worstLowerMargin = -Infinity;
   let worstUpperMHz = 0;
@@ -291,7 +293,7 @@ function complianceStats(psd) {
     if (mhz < 1 || mhz > 400) continue;
     const upper = interpolateLimit(drive.upper, mhz);
     const lower = interpolateLimit(drive.lower, mhz);
-    const measured = psd.psdDbmRbw[i];
+    const measured = measuredPsd[i];
 
     if (Number.isFinite(upper)) {
       const margin = measured - upper;
@@ -364,11 +366,12 @@ function runAnalysis() {
 
 function buildCsv(psd) {
   const otherLoad = psd.loadOhm === 50 ? 100 : 50;
-  const header = `Frequency_Hz,PSD_V2_per_Hz,PSD_dB_per_Hz,PSD_dBm_per_Hz_${psd.loadOhm}Ohm,PSD_dBm_per_RBW_${psd.loadOhm}Ohm,PSD_dBm_per_Hz_${otherLoad}Ohm`;
+  const measuredPsd = getMeasuredPsdForDisplay(psd);
+  const header = `Frequency_Hz,PSD_V2_per_Hz,PSD_dB_per_Hz,PSD_dBm_per_Hz_${psd.loadOhm}Ohm,PSD_dBm_per_RBW_${psd.loadOhm}Ohm,PSD_dBm_per_RBW_Filtered_${psd.loadOhm}Ohm,PSD_dBm_per_Hz_${otherLoad}Ohm`;
   const lines = [header];
   for (let i = 0; i < psd.freq.length; i += 1) {
     const other = 10 * Math.log10((Math.max(psd.pxx[i], 1e-300) / otherLoad) / 1e-3);
-    lines.push(`${psd.freq[i]},${psd.pxx[i]},${psd.psdDb[i]},${psd.psdDbm[i]},${psd.psdDbmRbw[i]},${other}`);
+    lines.push(`${psd.freq[i]},${psd.pxx[i]},${psd.psdDb[i]},${psd.psdDbm[i]},${psd.psdDbmRbw[i]},${measuredPsd[i]},${other}`);
   }
   return lines.join("\n");
 }
@@ -478,13 +481,14 @@ function drawPsd() {
     drawLimitLine(ctx, drive.lower, xMap, yMap, "#6b7378", [3, 4], xMax);
   }
 
+  const measuredPsd = getMeasuredPsdForDisplay(psd);
   ctx.beginPath();
   let started = false;
   for (let i = 1; i < psd.freq.length; i += 1) {
     const mhz = psd.freq[i] / 1e6;
     if (mhz < 1 || mhz > xMax) continue;
     const x = xMap(mhz);
-    const y = yMap(Math.max(yMin, Math.min(yMax, psd.psdDbmRbw[i])));
+    const y = yMap(Math.max(yMin, Math.min(yMax, measuredPsd[i])));
     if (!started) {
       ctx.moveTo(x, y);
       started = true;
@@ -498,6 +502,34 @@ function drawPsd() {
   ctx.stroke();
 
   drawLegend(ctx, plot);
+}
+
+function getMeasuredPsdForDisplay(psd) {
+  if (!els.notch100Toggle.checked) return psd.psdDbmRbw;
+  return despikeBand(psd.freq, psd.psdDbmRbw, 95e6, 105e6, 8, 9);
+}
+
+function despikeBand(freq, values, fMin, fMax, thresholdDb, radiusBins) {
+  const output = Float64Array.from(values);
+  const scratch = [];
+
+  for (let i = 0; i < values.length; i += 1) {
+    const f = freq[i];
+    if (f < fMin || f > fMax) continue;
+
+    scratch.length = 0;
+    const lo = Math.max(0, i - radiusBins);
+    const hi = Math.min(values.length - 1, i + radiusBins);
+    for (let j = lo; j <= hi; j += 1) {
+      if (j === i) continue;
+      scratch.push(values[j]);
+    }
+    scratch.sort((a, b) => a - b);
+    const med = scratch[Math.floor(scratch.length / 2)];
+    if (values[i] - med > thresholdDb) output[i] = med;
+  }
+
+  return output;
 }
 
 function formatRbw(rbwHz) {
@@ -672,6 +704,13 @@ els.driveSelect.addEventListener("change", () => {
   els.summary.textContent = `${stats.pass ? "PASS" : "FAIL"} · upper ${stats.worstUpperMargin.toFixed(2)} dB · lower ${Number.isFinite(stats.worstLowerMargin) ? stats.worstLowerMargin.toFixed(2) : "N/A"} dB`;
 });
 els.maskToggle.addEventListener("change", drawPsd);
+els.notch100Toggle.addEventListener("change", () => {
+  if (!state.psd) return;
+  state.lastCsv = buildCsv(state.psd);
+  drawPsd();
+  const stats = complianceStats(state.psd);
+  els.summary.textContent = `${stats.pass ? "PASS" : "FAIL"} · upper ${stats.worstUpperMargin.toFixed(2)} dB · lower ${Number.isFinite(stats.worstLowerMargin) ? stats.worstLowerMargin.toFixed(2) : "N/A"} dB`;
+});
 window.addEventListener("resize", () => {
   drawPsd();
   drawWaveform();
