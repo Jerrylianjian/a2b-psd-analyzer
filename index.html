@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>A2B TX PSD Analyzer</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <aside class="sidebar">
+    <header class="brand">
+      <div class="brand-icon">~</div>
+      <div>
+        <h1>A2B TX PSD</h1>
+        <p>CSV Compliance Analyzer</p>
+      </div>
+    </header>
+
+    <section class="panel">
+      <h2>波形文件</h2>
+      <label id="dropZone" class="drop-zone" for="fileInput">
+        <input id="fileInput" type="file" accept=".csv,.txt,.dat,text/csv,text/plain">
+        <span class="drop-icon">↓</span>
+        <strong>点击或拖拽 CSV 文件</strong>
+        <small>两列: time[s], V[V] 或单列 V[V]</small>
+      </label>
+      <div id="fileMeta" class="meta">尚未加载文件</div>
+    </section>
+
+    <section class="panel">
+      <h2>输入配置</h2>
+      <label class="radio-row">
+        <input type="radio" name="inputMode" value="differential" checked>
+        <span>差分波形 Vdiff</span>
+      </label>
+      <label class="radio-row">
+        <input type="radio" name="inputMode" value="singleAuto">
+        <span>单端波形 x2 至差分</span>
+      </label>
+
+      <label class="field">
+        <span>采样率 Fs (Hz, 单列 CSV 时使用)</span>
+        <input id="sampleRateInput" type="number" min="1" step="1" value="500000000">
+      </label>
+
+      <label class="field">
+        <span>RBW (Hz, 用于 dBm/RBW 换算)</span>
+        <input id="rbwInput" type="number" min="1" step="1" value="1000000">
+      </label>
+
+      <label class="field">
+        <span>参考负载</span>
+        <select id="loadSelect">
+          <option value="50" selected>50 Ω</option>
+          <option value="100">100 Ω</option>
+        </select>
+      </label>
+
+      <label class="field">
+        <span>驱动能力限值</span>
+        <select id="driveSelect">
+          <option value="high" selected>高</option>
+          <option value="medium">中</option>
+          <option value="low">低</option>
+        </select>
+      </label>
+
+      <label class="check-row">
+        <input id="maskToggle" type="checkbox" checked>
+        <span>显示 A2B 上/下限</span>
+      </label>
+    </section>
+
+    <button id="runButton" class="run" disabled>RUN ANALYSIS</button>
+    <button id="demoButton" class="secondary">生成演示波形</button>
+    <button id="exportButton" class="secondary" disabled>导出 PSD CSV</button>
+
+    <section class="console">
+      <div class="console-head">
+        <span>CONSOLE</span>
+        <span id="statusDot" class="dot idle"></span>
+      </div>
+      <pre id="consoleLog">Ready. Upload CSV and click RUN.</pre>
+    </section>
+  </aside>
+
+  <main class="workspace">
+    <header class="topbar">
+      <div>
+        <strong>频谱分析</strong>
+        <span class="badge">SCOPE MODE</span>
+      </div>
+      <div id="summary" class="summary">等待输入</div>
+    </header>
+
+    <section class="plot-grid">
+      <article class="plot-card spectrum-card">
+        <div class="plot-head">
+        <span><i class="blue"></i> PSD Spectrum</span>
+          <span id="loadLabel">50 Ω · 1 MHz RBW</span>
+        </div>
+        <canvas id="psdCanvas"></canvas>
+      </article>
+
+      <article class="plot-card waveform-card">
+        <div class="plot-head">
+          <span><i class="green"></i> Captured Waveform</span>
+          <span id="timeLabel">5 μs</span>
+        </div>
+        <canvas id="waveCanvas"></canvas>
+      </article>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
